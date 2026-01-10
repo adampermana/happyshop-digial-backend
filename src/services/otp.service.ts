@@ -97,7 +97,7 @@ export class OTPService {
     /**
      * Check if user can request OTP (rate limiting)
      */
-    static async canRequestOTP(userId: string, email: string): Promise<{ allowed: boolean; message?: string; isBlocked: boolean }> {
+    static async canRequestOTP(userId: string, email: string): Promise<{ allowed: boolean; message?: string; isBlocked: boolean; secondsRemaining?: number }> {
         // Check OTP attempt tracking
         const otpAttempt = await prisma.otpAttempt.findFirst({
             where: { user_id: userId, email },
@@ -109,9 +109,11 @@ export class OTPService {
 
         // Check if blocked (max 3 attempts reached)
         if (otpAttempt.is_blocked && otpAttempt.blocked_until && new Date() < otpAttempt.blocked_until) {
+            const secondsRemaining = Math.ceil((otpAttempt.blocked_until.getTime() - Date.now()) / 1000)
             return {
                 allowed: false,
                 isBlocked: true,
+                secondsRemaining,
                 message: 'Too many OTP requests\nYou have reached the maximum number of OTP requests.\nPlease try again after 1 hour.',
             }
         }
@@ -137,6 +139,7 @@ export class OTPService {
             return {
                 allowed: false,
                 isBlocked: false,
+                secondsRemaining,
                 message: `Please wait ${secondsRemaining} seconds before requesting another OTP`,
             }
         }
@@ -177,8 +180,8 @@ export class OTPService {
 
         const newCount = existing.attempt_count + 1
         const updateData: any = {
-            attemptCount: newCount,
-            lastAttemptAt: new Date(),
+            attempt_count: newCount,
+            last_attempt_at: new Date(),
         }
 
         // Block after 3 attempts for 1 hour

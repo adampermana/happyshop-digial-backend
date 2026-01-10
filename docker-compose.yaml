@@ -3,7 +3,7 @@ services:
     image: postgres:17.5
     container_name: happyshop_postgres
     ports:
-      - "5432:5432"
+      - "5433:5432"
     environment:
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}

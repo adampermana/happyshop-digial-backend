@@ -16,6 +16,13 @@ export interface LoginResponse {
     }
 }
 
+export interface VerificationRequiredResponse {
+    requiresVerification: true
+    email: string
+    phone: string | null
+    message: string
+}
+
 export interface RegisterRequest {
     username: string
     email: string
@@ -67,6 +74,13 @@ export interface ResendOTPRequest {
 export interface ResendOTPResponse {
     otp: string
     is_otp: boolean
+}
+
+export interface RateLimitResponse {
+    rateLimited: true
+    seconds_remaining: number
+    is_blocked: boolean
+    message: string
 }
 
 export interface CloseAccountRequest {

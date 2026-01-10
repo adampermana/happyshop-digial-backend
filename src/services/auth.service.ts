@@ -7,12 +7,14 @@ import { OTPService } from './otp.service'
 import type {
     LoginRequest,
     LoginResponse,
+    VerificationRequiredResponse,
     RegisterRequest,
     RegisterResponse,
     VerifyAccountRequest,
     VerifyAccountResponse,
     ResendOTPRequest,
     ResendOTPResponse,
+    RateLimitResponse,
     CloseAccountRequest,
     ProfileResponse,
 } from '../modules/auth.types'
@@ -21,7 +23,7 @@ export class AuthService {
     /**
      * Login user with email/username and password
      */
-    static async login(data: LoginRequest): Promise<LoginResponse> {
+    static async login(data: LoginRequest): Promise<LoginResponse | VerificationRequiredResponse> {
         const { username_or_email, password, uuid_device, latitude, longitude } = data
 
         // Check for spam login attempts
@@ -62,7 +64,13 @@ export class AuthService {
 
         // Check if account is active (not verified yet)
         if (!user.is_active || !user.is_email_verified) {
-            throw new Error('Please verify your account.')
+            // Return special response with email for OTP verification flow
+            return {
+                requiresVerification: true,
+                email: user.email,
+                phone: user.phone,
+                message: 'Please verify your account.',
+            }
         }
 
         // Record successful login
@@ -89,7 +97,7 @@ export class AuthService {
     /**
      * Register new user
      */
-    static async register(data: RegisterRequest): Promise<RegisterResponse> {
+    static async register(data: RegisterRequest): Promise<RegisterResponse | VerificationRequiredResponse> {
         const { email, username, phone, password, country, latitude, longitude, uuid_device, platform, fcm_token, is_rule } = data
 
         // Validate username format (only alphanumeric, hyphens, and underscores - no spaces)
@@ -118,9 +126,14 @@ export class AuthService {
                 throw new Error('This account has been closed and cannot be reused')
             }
 
-            // If account not verified yet, prompt to verify
+            // If account not verified yet, return response with email for OTP flow
             if (!exactMatchAccount.is_email_verified || !exactMatchAccount.is_active) {
-                throw new Error('Please verify your account.')
+                return {
+                    requiresVerification: true,
+                    email: exactMatchAccount.email,
+                    phone: exactMatchAccount.phone,
+                    message: 'Please verify your account.',
+                }
             }
 
             // Account exists and is verified - prompt to login
@@ -283,7 +296,7 @@ export class AuthService {
     /**
      * Resend OTP
      */
-    static async resendOTP(data: ResendOTPRequest): Promise<ResendOTPResponse> {
+    static async resendOTP(data: ResendOTPRequest): Promise<ResendOTPResponse | RateLimitResponse> {
         const { email, phone } = data
 
         // Find user by email
@@ -303,7 +316,13 @@ export class AuthService {
         // Check OTP rate limiting
         const rateCheck = await OTPService.canRequestOTP(user.id_user, email)
         if (!rateCheck.allowed) {
-            throw new Error(rateCheck.message || 'Too many OTP requests')
+            // Return rate limit response with seconds remaining
+            return {
+                rateLimited: true,
+                seconds_remaining: rateCheck.secondsRemaining || 0,
+                is_blocked: rateCheck.isBlocked,
+                message: rateCheck.message || 'Too many OTP requests',
+            }
         }
 
         // Record OTP request

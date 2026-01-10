@@ -4,6 +4,7 @@ import { successResponse, errorResponse } from '@/utils/response'
 import { verifyToken } from '@/utils/jwt'
 import type {
     LoginRequest,
+    VerificationRequiredResponse,
     RegisterRequest,
     VerifyAccountRequest,
     ResendOTPRequest,
@@ -24,6 +25,22 @@ export class AuthController {
             }
 
             const result = await AuthService.login(body)
+
+            // Check if account requires verification
+            if (result && 'requiresVerification' in result && result.requiresVerification) {
+                return c.json({
+                    meta: {
+                        success: false,
+                        message: result.message,
+                        code: 403,
+                    },
+                    data: {
+                        requiresVerification: true,
+                        email: result.email,
+                        phone: result.phone,
+                    },
+                }, 403)
+            }
 
             return c.json(successResponse('Login successful', result, 200), 200)
         } catch (error) {
@@ -62,6 +79,22 @@ export class AuthController {
             }
 
             const result = await AuthService.register(body)
+
+            // Check if account requires verification (existing unverified account)
+            if (result && 'requiresVerification' in result && result.requiresVerification) {
+                return c.json({
+                    meta: {
+                        success: false,
+                        message: result.message,
+                        code: 403,
+                    },
+                    data: {
+                        requiresVerification: true,
+                        email: result.email,
+                        phone: result.phone,
+                    },
+                }, 403)
+            }
 
             return c.json(successResponse('Registration successful. Please check your email for OTP verification.', result, 201), 201)
         } catch (error) {
@@ -104,6 +137,22 @@ export class AuthController {
             }
 
             const result = await AuthService.resendOTP(body)
+
+            // Check if rate limited
+            if (result && 'rateLimited' in result && result.rateLimited) {
+                return c.json({
+                    meta: {
+                        success: false,
+                        message: result.message,
+                        code: 429,
+                    },
+                    data: {
+                        rateLimited: true,
+                        seconds_remaining: result.seconds_remaining,
+                        is_blocked: result.is_blocked,
+                    },
+                }, 429)
+            }
 
             return c.json(successResponse('OTP sent successfully', result, 200), 200)
         } catch (error) {
