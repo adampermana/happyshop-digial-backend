@@ -99,8 +99,8 @@ export class DeviceRegistryService {
 
         const newCount = existing.register_count + 1
         const updateData: any = {
-            registerCount: newCount,
-            lastAttemptAt: new Date(),
+            register_count: newCount,
+            last_attempt_at: new Date(),
         }
 
         // After 2 spam attempts: activate captcha (reset when user successfully creates account)

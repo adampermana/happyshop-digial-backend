@@ -31,6 +31,14 @@ export class UserService {
      * Update user profile
      */
     static async updateProfile(user_id: string, data: { username?: string }) {
+        // Validate username format if username is being updated
+        if (data.username) {
+            const usernameRegex = /^[a-zA-Z0-9_-]+$/
+            if (!usernameRegex.test(data.username)) {
+                throw new Error('Username can only contain letters, numbers, hyphens (-), and underscores (_). Spaces are not allowed.')
+            }
+        }
+
         const user = await prisma.user.update({
             where: { id_user: user_id },
             data,

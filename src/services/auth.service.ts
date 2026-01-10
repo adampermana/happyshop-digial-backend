@@ -22,10 +22,10 @@ export class AuthService {
      * Login user with email/username and password
      */
     static async login(data: LoginRequest): Promise<LoginResponse> {
-        const { usernameOrEmail, password, uuidDevice, latitude, longitude } = data
+        const { username_or_email, password, uuid_device, latitude, longitude } = data
 
         // Check for spam login attempts
-        const spamCheck = await LoginAttemptService.checkSpamLogin(usernameOrEmail, uuidDevice)
+        const spamCheck = await LoginAttemptService.checkSpamLogin(username_or_email, uuid_device)
         if (spamCheck) {
             throw new Error(spamCheck)
         }
@@ -33,12 +33,12 @@ export class AuthService {
         // Find user by email or username
         const user = await prisma.user.findFirst({
             where: {
-                OR: [{ email: usernameOrEmail }, { username: usernameOrEmail }],
+                OR: [{ email: username_or_email }, { username: username_or_email }],
             },
         })
 
         if (!user) {
-            throw new Error(`Account not registered, please register account ${usernameOrEmail}`)
+            throw new Error(`Account not registered, please register account ${username_or_email}`)
         }
 
         // Check if account is suspended
@@ -56,17 +56,17 @@ export class AuthService {
         const isPasswordValid = await comparePassword(password, user.password)
         if (!isPasswordValid) {
             // Record failed login
-            await LoginAttemptService.recordFailedLogin(user.id_user, usernameOrEmail, latitude, uuidDevice)
+            await LoginAttemptService.recordFailedLogin(user.id_user, username_or_email, latitude, uuid_device)
             throw new Error('salah password, silahkan coba lagi')
         }
 
-        // Check if account is active
-        if (!user.is_active) {
-            throw new Error('Account is inactive. Please verify your email first.')
+        // Check if account is active (not verified yet)
+        if (!user.is_active || !user.is_email_verified) {
+            throw new Error('Please verify your account.')
         }
 
         // Record successful login
-        await LoginAttemptService.recordSuccessfulLogin(user.id_user, usernameOrEmail, latitude, uuidDevice)
+        await LoginAttemptService.recordSuccessfulLogin(user.id_user, username_or_email, latitude, uuid_device)
 
         // Generate JWT token with idUser
         const token = generateToken({
@@ -92,20 +92,45 @@ export class AuthService {
     static async register(data: RegisterRequest): Promise<RegisterResponse> {
         const { email, username, phone, password, country, latitude, longitude, uuid_device, platform, fcm_token, is_rule } = data
 
+        // Validate username format (only alphanumeric, hyphens, and underscores - no spaces)
+        const usernameRegex = /^[a-zA-Z0-9_-]+$/
+        if (!usernameRegex.test(username)) {
+            throw new Error('Username can only contain letters, numbers, hyphens (-), and underscores (_). Spaces are not allowed.')
+        }
+
         // Validate terms acceptance
         if (!is_rule) {
             throw new Error('You must accept the terms and conditions to register')
         }
 
-        // Check device registration spam
-        const deviceCheck = await DeviceRegistryService.checkDeviceRegistration(uuid_device, latitude, longitude)
-        if (!deviceCheck.allowed) {
-            throw new Error(deviceCheck.message || 'Registration blocked')
+        // First, check if ALL data matches an existing unverified account (same email AND username AND phone)
+        const exactMatchAccount = await prisma.user.findFirst({
+            where: {
+                email,
+                username,
+                ...(phone && { phone }),
+            },
+        })
+
+        if (exactMatchAccount) {
+            // If account was closed, prevent re-registration
+            if (exactMatchAccount.is_suspended) {
+                throw new Error('This account has been closed and cannot be reused')
+            }
+
+            // If account not verified yet, prompt to verify
+            if (!exactMatchAccount.is_email_verified || !exactMatchAccount.is_active) {
+                throw new Error('Please verify your account.')
+            }
+
+            // Account exists and is verified - prompt to login
+            throw new Error('Your account has been registered. Please log in.')
         }
 
-        if (deviceCheck.requiresCaptcha) {
-            throw new Error(deviceCheck.message || 'Captcha verification required')
-        }
+        // If no exact match, check individual fields for partial matches
+        // Collect all conflicts first, then show combined message
+        const conflicts: string[] = []
+        const closedAccountMessages: string[] = []
 
         // Check if email already exists
         const existingEmail = await prisma.user.findUnique({
@@ -113,13 +138,11 @@ export class AuthService {
         })
 
         if (existingEmail) {
-            // If account was closed, prevent re-registration
             if (existingEmail.is_suspended) {
-                throw new Error('This email address has been used for a closed account and cannot be reused')
+                closedAccountMessages.push('This email address has been used for a closed account and cannot be reused')
+            } else {
+                conflicts.push('Email already registered')
             }
-
-            await DeviceRegistryService.recordRegistrationAttempt(uuid_device, latitude, longitude, false)
-            throw new Error('Email already registered')
         }
 
         // Check if username already exists
@@ -128,8 +151,11 @@ export class AuthService {
         })
 
         if (existingUsername) {
-            await DeviceRegistryService.recordRegistrationAttempt(uuid_device, latitude, longitude, false)
-            throw new Error('Username already taken')
+            if (existingUsername.is_suspended) {
+                closedAccountMessages.push('This username has been used for a closed account and cannot be reused')
+            } else {
+                conflicts.push('Username already taken')
+            }
         }
 
         // Check if phone already exists
@@ -139,14 +165,32 @@ export class AuthService {
             })
 
             if (existingPhone) {
-                // If account was closed, prevent re-registration
                 if (existingPhone.is_suspended) {
-                    throw new Error('This phone number has been used for a closed account and cannot be reused')
+                    closedAccountMessages.push('This phone number has been used for a closed account and cannot be reused')
+                } else {
+                    conflicts.push('Phone number already registered')
                 }
-
-                await DeviceRegistryService.recordRegistrationAttempt(uuid_device, latitude, longitude, false)
-                throw new Error('Phone number already registered')
             }
+        }
+
+        // If any closed account messages, throw them first (priority)
+        if (closedAccountMessages.length > 0) {
+            throw new Error(closedAccountMessages.join(' & '))
+        }
+
+        // If any conflicts found, throw combined message
+        if (conflicts.length > 0) {
+            throw new Error(conflicts.join(' & '))
+        }
+
+        // NOW check device registration spam (only for NEW accounts)
+        const deviceCheck = await DeviceRegistryService.checkDeviceRegistration(uuid_device, latitude, longitude)
+        if (!deviceCheck.allowed) {
+            throw new Error(deviceCheck.message || 'Registration blocked')
+        }
+
+        if (deviceCheck.requiresCaptcha) {
+            throw new Error(deviceCheck.message || 'Captcha verification required')
         }
 
         // Hash password
@@ -163,13 +207,19 @@ export class AuthService {
                 role: 'user',
                 is_email_verified: false,
                 is_active: false,
-                image_profile: `https://ui-avatars.com/api/?name=${encodeURIComponent(username)}&background=random`,
+                image_profile: `https://api.dicebear.com/9.x/fun-emoji/svg?seed=${encodeURIComponent(username)}`,
             },
         })
 
-        // Store device information
-        await prisma.userDevice.create({
-            data: {
+        // Store device information (upsert to handle re-registration)
+        await prisma.userDevice.upsert({
+            where: { uuid_device: uuid_device },
+            update: {
+                user_id: user.id_user,
+                platform,
+                fcm_token: fcm_token,
+            },
+            create: {
                 user_id: user.id_user,
                 uuid_device: uuid_device,
                 platform,

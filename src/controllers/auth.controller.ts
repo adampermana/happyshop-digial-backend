@@ -19,7 +19,7 @@ export class AuthController {
             const body = await c.req.json<LoginRequest>()
 
             // Validate request
-            if (!body.usernameOrEmail || !body.password) {
+            if (!body.username_or_email || !body.password) {
                 return c.json(errorResponse('Username/Email and password are required', 400), 400)
             }
 

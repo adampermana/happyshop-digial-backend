@@ -1,9 +1,9 @@
 export interface LoginRequest {
-    usernameOrEmail: string
+    username_or_email: string
     password: string
     latitude?: string
     longitude?: string
-    uuidDevice?: string
+    uuid_device?: string
 }
 
 export interface LoginResponse {

@@ -78,7 +78,7 @@ export class LoginAttemptService {
 
         // Update user flags based on attempt count
         const updateData: any = {
-            lastFailedLoginAt: new Date(),
+            last_failed_login_at: new Date(),
         }
 
         // Activate captcha after 3 failed attempts
@@ -144,7 +144,7 @@ export class LoginAttemptService {
             where: {
                 username_or_email: usernameOrEmail,
                 attempted_at: { gte: fiveMinutesAgo },
-                ...(uuidDevice && { uuidDevice }),
+                ...(uuidDevice && { uuid_device: uuidDevice }),
             },
         })
 
