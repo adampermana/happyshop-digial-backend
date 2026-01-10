@@ -1,0 +1,49 @@
+services:
+  postgres:
+    image: postgres:17.5
+    container_name: happyshop_postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    container_name: happyshop_backend
+    ports:
+      - "${PORT:-3000}:3000"
+    environment:
+      DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@postgres:5432/${DB_NAME}
+      JWT_SECRET: ${JWT_SECRET}
+      PORT: ${PORT:-3000}
+      NODE_ENV: development
+    volumes:
+      - .:/app
+      - /app/node_modules
+    networks:
+      - app-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    command: bun run --hot src/index.ts
+
+volumes:
+  postgres_data:
+
+networks:
+  app-network:

@@ -1,0 +1,25 @@
+// ============================================
+// SECURITY - Login Attempt Tracking
+// ============================================
+
+model LoginAttempt {
+    id                String   @id @default(uuid())
+    user_id           String?
+    username_or_email String
+    ip_address        String?
+    uuid_device       String?
+    latitude          String?
+    longitude         String?
+    is_successful     Boolean  @default(false)
+    failure_reason    String?
+    attempted_at      DateTime @default(now())
+
+    // Relations
+    user User? @relation(fields: [user_id], references: [id_user], onDelete: Cascade)
+
+    @@index([user_id])
+    @@index([username_or_email])
+    @@index([uuid_device])
+    @@index([attempted_at])
+    @@map("login_attempts")
+}

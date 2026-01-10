@@ -1,0 +1,35 @@
+// ============================================
+// MASTER DATA - Users
+// ============================================
+
+model User {
+  id_user               String    @id @default(uuid())
+  role                  UserRole  @default(user)
+  email                 String    @unique
+  phone                 String?   @unique
+  password              String
+  username              String    @unique
+  is_email_verified     Boolean   @default(false)
+  is_active             Boolean   @default(false)
+  is_suspended          Boolean   @default(false)
+  is_login_failed       Boolean   @default(false)
+  is_captcha            Boolean   @default(false)
+  last_failed_login_at  DateTime?
+  failed_login_reset_at DateTime?
+  created_at            DateTime  @default(now())
+  updated_at            DateTime  @updatedAt
+  updated_by            String?
+  image_profile         String?
+  postal_code           String?
+  country               String?   @default("Indonesia")
+
+  // Relations
+  devices        UserDevice[]
+  otps           Otp[]
+  login_attempts LoginAttempt[]
+
+  @@index([email])
+  @@index([username])
+  @@index([phone])
+  @@map("users")
+}

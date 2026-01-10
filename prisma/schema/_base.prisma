@@ -1,0 +1,12 @@
+// Prisma Schema Base Configuration
+// Multi-file schema support (Prisma 5 requires preview feature)
+
+generator client {
+    provider        = "prisma-client-js"
+    previewFeatures = ["prismaSchemaFolder"]
+}
+
+datasource db {
+    provider = "postgresql"
+    url      = env("DATABASE_URL")
+}

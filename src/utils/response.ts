@@ -2,19 +2,24 @@
  * Standardized API response format
  */
 export interface ApiResponse<T = any> {
-    success: boolean
-    message: string
+    meta: {
+        success: boolean
+        message: string
+        code: number
+    }
     data?: T
-    error?: string
 }
 
 /**
  * Success response helper
  */
-export function successResponse<T>(message: string, data?: T): ApiResponse<T> {
+export function successResponse<T>(message: string, data?: T, code: number = 200): ApiResponse<T> {
     return {
-        success: true,
-        message,
+        meta: {
+            success: true,
+            message,
+            code,
+        },
         data,
     }
 }
@@ -22,10 +27,12 @@ export function successResponse<T>(message: string, data?: T): ApiResponse<T> {
 /**
  * Error response helper
  */
-export function errorResponse(message: string, error?: string): ApiResponse {
+export function errorResponse(message: string, code: number = 400): ApiResponse {
     return {
-        success: false,
-        message,
-        error,
+        meta: {
+            success: false,
+            message,
+            code,
+        },
     }
 }

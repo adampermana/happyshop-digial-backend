@@ -1,0 +1,20 @@
+// ============================================
+// SECURITY - Device Registry for Spam Prevention
+// ============================================
+
+model DeviceRegistry {
+  id                     String    @id @default(uuid())
+  uuid_device            String    @unique
+  latitude               String?
+  longitude              String?
+  register_count         Int       @default(0)
+  is_captcha_required    Boolean   @default(false)
+  is_permanently_blocked Boolean   @default(false)
+  last_attempt_at        DateTime  @default(now())
+  blocked_until          DateTime?
+  created_at             DateTime  @default(now())
+
+  @@index([uuid_device])
+  @@index([last_attempt_at])
+  @@map("device_registry")
+}

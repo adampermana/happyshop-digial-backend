@@ -1,0 +1,23 @@
+// ============================================
+// SECURITY - OTP Management
+// ============================================
+
+model Otp {
+  id         String   @id @default(uuid())
+  user_id    String
+  email      String
+  phone      String?
+  otp_code   String
+  expires_at DateTime
+  is_used    Boolean  @default(false)
+  created_at DateTime @default(now())
+  created_by String?
+
+  // Relations
+  user User @relation(fields: [user_id], references: [id_user], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([email])
+  @@index([otp_code])
+  @@map("otps")
+}

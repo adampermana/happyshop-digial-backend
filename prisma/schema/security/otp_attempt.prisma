@@ -1,0 +1,21 @@
+// ============================================
+// SECURITY - OTP Attempt Tracking
+// ============================================
+
+model OtpAttempt {
+  id              String    @id @default(uuid())
+  user_id         String?
+  email           String
+  phone           String?
+  attempt_count   Int       @default(0)
+  is_blocked      Boolean   @default(false)
+  last_attempt_at DateTime  @default(now())
+  blocked_until   DateTime?
+  created_at      DateTime  @default(now())
+
+  @@index([user_id])
+  @@index([email])
+  @@index([phone])
+  @@index([last_attempt_at])
+  @@map("otp_attempts")
+}

@@ -4,7 +4,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your_super_secret_jwt_key_change_t
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d'
 
 export interface JWTPayload {
-    userId: string
+    idUser: string
     email: string
     role: string
 }

@@ -1,0 +1,21 @@
+// ============================================
+// MASTER DATA - User Device
+// ============================================
+
+model UserDevice {
+  id          Int      @id @default(autoincrement())
+  user_id     String
+  fcm_token   String   @unique
+  uuid_device String   @unique // UUID device for spam detection
+  platform    String // iOS, Android, Web
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  // Relations
+  user User @relation(fields: [user_id], references: [id_user], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([fcm_token])
+  @@index([uuid_device])
+  @@map("user_devices")
+}

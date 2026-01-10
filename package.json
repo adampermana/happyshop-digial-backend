@@ -2,7 +2,9 @@
   "name": "happyshop-digial-backend",
   "scripts": {
     "dev": "bun run --hot src/index.ts",
-    "seed": "bun run prisma/seed.ts"
+    "seed": "bun run prisma/seed.ts",
+    "db:up": "docker compose up -d",
+    "db:down": "docker compose down"
   },
   "prisma": {
     "seed": "bun run prisma/seed.ts"
@@ -10,6 +12,7 @@
   "dependencies": {
     "@prisma/client": "5",
     "bcryptjs": "^3.0.3",
+    "dotenv": "^17.2.3",
     "hono": "^4.10.6",
     "jsonwebtoken": "^9.0.3",
     "prisma": "5"
