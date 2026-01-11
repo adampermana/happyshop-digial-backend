@@ -4,7 +4,7 @@ import { successResponse, errorResponse } from '@/utils/response'
 import { verifyToken } from '@/utils/jwt'
 import type {
     LoginRequest,
-    VerificationRequiredResponse,
+    // VerificationRequiredResponse,
     RegisterRequest,
     VerifyAccountRequest,
     ResendOTPRequest,
@@ -17,12 +17,23 @@ export class AuthController {
      */
     static async login(c: Context) {
         try {
+            // Validate request
+            // if (!body.username_or_email || !body.password) {
+            //     return c.json(errorResponse('Username/Email and password are required', 400), 400)
+            // }
+
+            // if (!body.platform || !body.fcm_token) {
+            //     return c.json(errorResponse('Platform and FCM token are required', 400), 400)
+            // }
             const body = await c.req.json<LoginRequest>()
 
-            // Validate request
-            if (!body.username_or_email || !body.password) {
-                return c.json(errorResponse('Username/Email and password are required', 400), 400)
+            let requiredFields = ['username_or_email', 'password', 'platform', 'fcm_token']
+            let missingFields = requiredFields.filter(field => !body[field as keyof LoginRequest])
+
+            if (missingFields.length > 0) {
+                return c.json(errorResponse(`Missing required fields: ${missingFields.join(', ')}`, 400), 400)
             }
+
 
             const result = await AuthService.login(body)
 

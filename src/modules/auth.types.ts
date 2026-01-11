@@ -4,6 +4,8 @@ export interface LoginRequest {
     latitude?: string
     longitude?: string
     uuid_device?: string
+    platform: string
+    fcm_token: string
 }
 
 export interface LoginResponse {

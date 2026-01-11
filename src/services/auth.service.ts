@@ -24,7 +24,7 @@ export class AuthService {
      * Login user with email/username and password
      */
     static async login(data: LoginRequest): Promise<LoginResponse | VerificationRequiredResponse> {
-        const { username_or_email, password, uuid_device, latitude, longitude } = data
+        const { username_or_email, password, uuid_device, latitude, longitude, platform, fcm_token } = data
 
         // Check for spam login attempts
         const spamCheck = await LoginAttemptService.checkSpamLogin(username_or_email, uuid_device)
@@ -75,6 +75,24 @@ export class AuthService {
 
         // Record successful login
         await LoginAttemptService.recordSuccessfulLogin(user.id_user, username_or_email, latitude, uuid_device)
+
+        // Update/store device information if uuid_device is provided
+        if (uuid_device) {
+            await prisma.userDevice.upsert({
+                where: { uuid_device: uuid_device },
+                update: {
+                    user_id: user.id_user,
+                    platform,
+                    fcm_token,
+                },
+                create: {
+                    user_id: user.id_user,
+                    uuid_device: uuid_device,
+                    platform,
+                    fcm_token,
+                },
+            })
+        }
 
         // Generate JWT token with idUser
         const token = generateToken({
