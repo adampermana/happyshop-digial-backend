@@ -12,6 +12,7 @@ model User {
   is_email_verified     Boolean   @default(false)
   is_active             Boolean   @default(false)
   is_suspended          Boolean   @default(false)
+  is_banned             Boolean   @default(false)
   is_login_failed       Boolean   @default(false)
   is_captcha            Boolean   @default(false)
   last_failed_login_at  DateTime?
@@ -24,9 +25,11 @@ model User {
   country               String?   @default("Indonesia")
 
   // Relations
-  devices        UserDevice[]
-  otps           Otp[]
-  login_attempts LoginAttempt[]
+  devices           UserDevice[]
+  otps              Otp[]
+  login_attempts    LoginAttempt[]
+  moderationLogs    UserModerationLog[] @relation("ModeratedUser")
+  moderationActions UserModerationLog[] @relation("Moderator")
 
   @@index([email])
   @@index([username])

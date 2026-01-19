@@ -43,9 +43,14 @@ export class AuthService {
             throw new Error(`Account not registered, please register account ${username_or_email}`)
         }
 
-        // Check if account is suspended
+        // Check if account is banned (permanent)
+        if (user.is_banned) {
+            throw new Error('Account has been permanently banned. Please contact support for more information.')
+        }
+
+        // Check if account is suspended (temporary)
         if (user.is_suspended) {
-            throw new Error('Account has been closed. Please contact support.')
+            throw new Error('Account has been temporarily suspended. Please contact support for more information.')
         }
 
         // Check login attempt restrictions
@@ -78,18 +83,37 @@ export class AuthService {
 
         // Update/store device information if uuid_device is provided
         if (uuid_device) {
+            // First, clear the fcm_token from any other devices that might have it
+            // to prevent unique constraint violations
+            if (fcm_token) {
+                await prisma.userDevice.updateMany({
+                    where: {
+                        fcm_token,
+                        uuid_device: { not: uuid_device },
+                    },
+                    data: {
+                        fcm_token: null,
+                    },
+                })
+            }
+
+            // Now upsert the current device
             await prisma.userDevice.upsert({
                 where: { uuid_device: uuid_device },
                 update: {
                     user_id: user.id_user,
                     platform,
                     fcm_token,
+                    is_active: true,
+                    last_login: new Date(),
                 },
                 create: {
                     user_id: user.id_user,
                     uuid_device: uuid_device,
                     platform,
                     fcm_token,
+                    is_active: true,
+                    last_login: new Date(),
                 },
             })
         }
@@ -243,18 +267,32 @@ export class AuthService {
         })
 
         // Store device information (upsert to handle re-registration)
+        // First, clear the fcm_token from any other devices that might have it
+        if (fcm_token) {
+            await prisma.userDevice.updateMany({
+                where: {
+                    fcm_token,
+                    uuid_device: { not: uuid_device },
+                },
+                data: {
+                    fcm_token: null,
+                },
+            })
+        }
+
+        // Now upsert the current device
         await prisma.userDevice.upsert({
             where: { uuid_device: uuid_device },
             update: {
                 user_id: user.id_user,
                 platform,
-                fcm_token: fcm_token,
+                fcm_token,
             },
             create: {
                 user_id: user.id_user,
                 uuid_device: uuid_device,
                 platform,
-                fcm_token: fcm_token,
+                fcm_token,
             },
         })
 
@@ -397,6 +435,36 @@ export class AuthService {
             created_at: user.created_at,
             updated_at: user.updated_at,
             image_profile: user.image_profile,
+        }
+    }
+
+    /**
+     * Logout user
+     */
+    static async logout(userId: string, uuid_device?: string): Promise<void> {
+        if (!uuid_device) {
+            // If no device specified, logout all devices for this user
+            await prisma.userDevice.updateMany({
+                where: { user_id: userId },
+                data: {
+                    is_active: false,
+                    last_logout: new Date(),
+                    fcm_token: null, // Clear FCM token to stop push notifications
+                },
+            })
+        } else {
+            // Logout specific device
+            await prisma.userDevice.updateMany({
+                where: {
+                    user_id: userId,
+                    uuid_device: uuid_device,
+                },
+                data: {
+                    is_active: false,
+                    last_logout: new Date(),
+                    fcm_token: null,
+                },
+            })
         }
     }
 }

@@ -10,6 +10,7 @@ authRoutes.post('/verify', AuthController.verifyAccount)
 authRoutes.post('/resend-otp', AuthController.resendOTP)
 
 // Protected routes (requires JWT token)
+authRoutes.post('/logout', AuthController.logout)
 authRoutes.post('/close-account', AuthController.closeAccount)
 
 export default authRoutes

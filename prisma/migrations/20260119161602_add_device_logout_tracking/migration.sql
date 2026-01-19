@@ -1,0 +1,4 @@
+-- AlterTable
+ALTER TABLE "user_devices" ADD COLUMN     "is_active" BOOLEAN NOT NULL DEFAULT true,
+ADD COLUMN     "last_login" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ADD COLUMN     "last_logout" TIMESTAMP(3);

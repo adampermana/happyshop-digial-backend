@@ -1,0 +1,26 @@
+// ============================================
+// MASTER DATA - User Moderation Log
+// ============================================
+
+model UserModerationLog {
+    id           Int       @id @default(autoincrement())
+    user_id      String
+    action_type  String // 'suspended' | 'banned' | 'unbanned' | 'unsuspended'
+    reason       String
+    notes        String?
+    moderated_by String? // Admin ID who performed action (null for system actions)
+    moderated_at DateTime  @default(now())
+    expires_at   DateTime? // Null = permanent, has value = temporary
+    is_active    Boolean   @default(true)
+    created_at   DateTime  @default(now())
+    updated_at   DateTime  @updatedAt
+
+    // Relations
+    user      User  @relation("ModeratedUser", fields: [user_id], references: [id_user], onDelete: Cascade)
+    moderator User? @relation("Moderator", fields: [moderated_by], references: [id_user], onDelete: SetNull)
+
+    @@index([user_id])
+    @@index([is_active])
+    @@index([action_type])
+    @@map("user_moderation_logs")
+}

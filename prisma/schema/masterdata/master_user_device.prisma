@@ -3,13 +3,16 @@
 // ============================================
 
 model UserDevice {
-  id          Int      @id @default(autoincrement())
+  id          Int       @id @default(autoincrement())
   user_id     String
-  fcm_token   String   @unique
-  uuid_device String   @unique // UUID device for spam detection
+  fcm_token   String?   @unique
+  uuid_device String    @unique // UUID device for spam detection
   platform    String // iOS, Android, Web
-  created_at  DateTime @default(now())
-  updated_at  DateTime @updatedAt
+  is_active   Boolean   @default(true) // Track if device is logged in
+  last_login  DateTime  @default(now())
+  last_logout DateTime?
+  created_at  DateTime  @default(now())
+  updated_at  DateTime  @updatedAt
 
   // Relations
   user User @relation(fields: [user_id], references: [id_user], onDelete: Cascade)

@@ -56,6 +56,18 @@ export class AuthController {
             return c.json(successResponse('Login successful', result, 200), 200)
         } catch (error) {
             const message = error instanceof Error ? error.message : 'Login failed'
+
+            // Check if too many login attempts (429 - rate limiting)
+            if (message.includes('Too Many Login Attempts')) {
+                return c.json(errorResponse(message, 429), 429)
+            }
+
+            // Check if account is not registered (422 - business logic error)
+            if (message.includes('Account not registered')) {
+                return c.json(errorResponse(message, 422), 422)
+            }
+
+            // Other errors remain 401 (authentication failed)
             return c.json(errorResponse(message, 401), 401)
         }
     }
@@ -205,6 +217,39 @@ export class AuthController {
             )
         } catch (error) {
             const message = error instanceof Error ? error.message : 'Close account failed'
+            return c.json(errorResponse(message, 400), 400)
+        }
+    }
+
+    /**
+     * POST /api/v1/auth/logout
+     */
+    static async logout(c: Context) {
+        try {
+            // Get user from JWT token
+            const authHeader = c.req.header('Authorization')
+            if (!authHeader || !authHeader.startsWith('Bearer ')) {
+                return c.json(errorResponse('Unauthorized', 401), 401)
+            }
+
+            const token = authHeader.substring(7)
+            const payload = verifyToken(token)
+
+            const body = await c.req.json<{ uuid_device?: string }>()
+
+            // Logout from device(s)
+            await AuthService.logout(payload.idUser, body.uuid_device)
+
+            return c.json(
+                successResponse(
+                    'Logout successful',
+                    null,
+                    200
+                ),
+                200
+            )
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'Logout failed'
             return c.json(errorResponse(message, 400), 400)
         }
     }
